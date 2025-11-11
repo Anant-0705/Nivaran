@@ -226,17 +226,22 @@ const ReportIssueScreen = () => {
       return;
     }
 
+    if (!location) {
+      Alert.alert('Error', 'Location is required to submit a report');
+      return;
+    }
+
     setLoading(true);
     try {
       const issueData = {
         title: title.trim(),
         description: description.trim(),
         category,
-        location: location ? {
+        location: {
           latitude: location.latitude,
           longitude: location.longitude,
           address: address || undefined,
-        } : undefined,
+        },
         images: photo ? [photo] : [],
         audio_url: undefined,
         user_id: currentUser.id,

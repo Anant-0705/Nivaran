@@ -36,7 +36,55 @@ except Exception as e:
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    """Basic health check endpoint."""
+    return {
+        "status": "healthy",
+        "service": "ai-verification",
+        "version": "1.0.0",
+        "model_loaded": model is not None
+    }
+
+@app.get("/health/detailed")
+async def health_detailed():
+    """Detailed health check with model information."""
+    import psutil
+    import torch
+    
+    return {
+        "status": "healthy",
+        "service": "ai-verification",
+        "version": "1.0.0",
+        "model": {
+            "path": MODEL_PATH,
+            "loaded": model is not None,
+            "confidence_threshold": CONF_THRESHOLD
+        },
+        "system": {
+            "cpu_percent": psutil.cpu_percent(),
+            "memory_percent": psutil.virtual_memory().percent,
+            "cuda_available": torch.cuda.is_available(),
+            "cuda_device_count": torch.cuda.device_count() if torch.cuda.is_available() else 0
+        }
+    }
+
+@app.get("/ready")
+async def ready():
+    """Readiness probe - check if service can handle requests."""
+    if model is None:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    
+    return {
+        "status": "ready",
+        "model_loaded": True
+    }
+
+@app.get("/live")
+async def live():
+    """Liveness probe - basic service availability."""
+    return {
+        "status": "alive",
+        "pid": os.getpid()
+    }
 
 @app.post("/verify")
 async def verify_image(file: UploadFile = File(...)):
