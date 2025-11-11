@@ -1,0 +1,13 @@
+# Core dependencies
+fastapi
+uvicorn[standard]
+python-multipart
+pillow
+
+# PyTorch with CUDA 12.4 (works for RTX 3050 & your driver)
+torch --index-url https://download.pytorch.org/whl/cu124
+torchvision --index-url https://download.pytorch.org/whl/cu124
+torchaudio --index-url https://download.pytorch.org/whl/cu124
+
+# YOLOv12 / Ultralytics
+ultralytics
