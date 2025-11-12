@@ -24,10 +24,10 @@ const CustomTabBarButton = ({ route, focused, color, size }: any) => {
 
   if (route.name === 'Map') {
     iconName = focused ? 'map' : 'map-outline';
-    label = 'Home';
+    label = 'Map';
   } else if (route.name === 'Report') {
     iconName = focused ? 'camera' : 'camera-outline';
-    label = 'Report';
+    label = 'Home';
   } else if (route.name === 'Progress') {
     iconName = focused ? 'stats-chart' : 'stats-chart-outline';
     label = 'Stats';
@@ -37,34 +37,35 @@ const CustomTabBarButton = ({ route, focused, color, size }: any) => {
   }
 
   if (focused) {
+    // Active tab: Show only text in pill, no icon
     return (
       <View style={pillStyles.activePill}>
-        <Ionicons name={iconName} size={20} color="#ffffff" />
         <Text style={pillStyles.activeLabel}>{label}</Text>
       </View>
     );
   }
 
+  // Inactive tabs: Show only icon, no text
   return <Ionicons name={iconName} size={24} color="#666" />;
 };
 
 const pillStyles = StyleSheet.create({
   activePill: {
-    backgroundColor: '#481B5EE5',
+    backgroundColor: '#006C48',
     borderRadius: 42,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-   
+
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 90,
+    minWidth: 80,
   },
   activeLabel: {
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '600',
-    marginLeft: 8,
   },
 });
 
@@ -89,8 +90,10 @@ const MainTabs = () => (
       tabBarStyle: {
         position: 'absolute',
         bottom: 20,
-        left: 160,
-        right: 160,
+
+        left: 20,
+        right: 20,
+
         borderRadius: 30,
         backgroundColor: '#ffffff',
         shadowColor: '#000',
@@ -101,21 +104,25 @@ const MainTabs = () => (
         borderTopWidth: 0,
         paddingBottom: 10,
         paddingTop: 10,
-        paddingLeft:16,
-        paddingRight:16,
+
+        paddingLeft:8,
+        paddingRight:12,
+
+      
        
       },
-      tabBarActiveTintColor: '#481B5EE5',
+      tabBarActiveTintColor: '#006C48',
       tabBarInactiveTintColor: '#666',
       headerShown: false,
       tabBarShowLabel: false,
       tabBarItemStyle: {
         paddingVertical: 5,
+
       },
     })}
   >
-    <Tab.Screen name="Map" component={MapScreen} />
     <Tab.Screen name="Report" component={ReportIssueScreen} />
+    <Tab.Screen name="Map" component={MapScreen} />
     <Tab.Screen name="Progress" component={ProgressScreen} />
     <Tab.Screen name="Rewards" component={RewardsScreen} />
   </Tab.Navigator>

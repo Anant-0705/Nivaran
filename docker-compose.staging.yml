@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: nivaran_postgres_staging
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nivaran_staging
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - nivaran-staging
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: nivaran_redis_staging
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_staging_data:/data
+    ports:
+      - "6380:6379"
+    networks:
+      - nivaran-staging
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: nivaran_backend_staging
+    restart: unless-stopped
+    environment:
+      NODE_ENV: staging
+      PORT: 3000
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/nivaran_staging
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      SUPABASE_URL: ${SUPABASE_STAGING_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_STAGING_ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_STAGING_SERVICE_KEY}
+      JWT_SECRET: ${JWT_SECRET_STAGING}
+      AI_SERVICE_URL: http://ai-service:8000
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - backend_staging_uploads:/app/uploads
+    ports:
+      - "3002:3000"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - nivaran-staging
+
+  # AI Service
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: nivaran_ai_staging
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: staging
+      MODEL_PATH: /app/models
+      CACHE_DIR: /app/cache
+    volumes:
+      - ai_staging_models:/app/models
+      - ai_staging_cache:/app/cache
+    ports:
+      - "8001:8000"
+    networks:
+      - nivaran-staging
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL_STAGING:-http://localhost:3002}
+    container_name: nivaran_frontend_staging
+    restart: unless-stopped
+    environment:
+      NODE_ENV: staging
+      PORT: 3001
+    ports:
+      - "3004:3001"
+    depends_on:
+      - backend
+    networks:
+      - nivaran-staging
+
+volumes:
+  postgres_staging_data:
+  redis_staging_data:
+  backend_staging_uploads:
+  ai_staging_models:
+  ai_staging_cache:
+
+networks:
+  nivaran-staging:
+    driver: bridge

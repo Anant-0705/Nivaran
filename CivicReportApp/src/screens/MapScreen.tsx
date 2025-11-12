@@ -294,12 +294,11 @@ const MapScreen: React.FC = () => {
 
   return (
     <ImageBackground
-      source={require('../../assets/image.png')}
+      source={require('../../assets/bgimage.png')}
       style={styles.container}
       resizeMode="cover"
     >
-      <StatusBar barStyle="light-content" backgroundColor="#481B5EE5" translucent />
-      <View style={styles.headerOverlay} />
+      <StatusBar barStyle="light-content" backgroundColor="#006C48" />
       
       <ScrollView
         style={styles.scrollView}
@@ -307,25 +306,26 @@ const MapScreen: React.FC = () => {
       >
         {/* Header Content */}
         <View style={styles.headerContent}>
-          <View style={styles.headerTop}>
-            <TouchableOpacity onPress={navigateToProfile} style={styles.profileButton}>
-              <View style={styles.profileAvatar}>
-                <Text style={styles.profileInitial}>
+          {/* Profile and Notification Row - Top Row */}
+          <View style={styles.topRow}>
+            <TouchableOpacity onPress={navigateToProfile} style={styles.topProfileButton}>
+              <View style={styles.topProfileAvatar}>
+                <Text style={styles.topProfileInitial}>
                   {currentUser?.name?.charAt(0) || currentUser?.email?.charAt(0) || 'U'}
                 </Text>
               </View>
-              <View style={styles.profileInfo}>
-                <Text style={styles.locationLabel}>Ghaziabad</Text>
-                <Text style={styles.welcomeText}>
-                  Welcome {currentUser?.name?.split(' ')[0] || 'User'}!
-                </Text>
-                <Text style={styles.locationSubtext}>Stay civic in your local city</Text>
-              </View>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.notificationButton}>
-              <Ionicons name="notifications-outline" size={24} color="#E5C47F" />
+            <Text style={styles.nivaranHeaderText}>NIVARAN</Text>
+            
+            <TouchableOpacity style={styles.topNotificationButton}>
+              <Ionicons name="notifications-outline" size={24} color="#000000" />
             </TouchableOpacity>
+          </View>
+
+          {/* Subtitle */}
+          <View style={styles.subtitleContainer}>
+            <Text style={styles.nivaranSubtitle}>MONITOR ISSUES IN YOUR COMMUNITY</Text>
           </View>
         </View>
 
@@ -436,26 +436,7 @@ const MapScreen: React.FC = () => {
           </View>
 
           {/* Issue Categories Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Issue Categories</Text>
-            
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesContainer}>
-              {categories.map((category, index) => (
-                <TouchableOpacity key={category.id} style={[styles.categoryCard, { backgroundColor: getCategoryBackground(index) }]}>
-                  <View style={styles.categoryHeader}>
-                    <View style={[styles.categoryIcon, { backgroundColor: category.color }]}>
-                      <Ionicons name={category.icon as any} size={20} color="#FFFFFF" />
-                    </View>
-                  </View>
-                  <Text style={styles.categoryName}>{category.name}</Text>
-                  <Text style={styles.categoryDescription}>{category.description}</Text>
-                  <TouchableOpacity style={styles.categoryArrow}>
-                    <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+         
           
           {/* Bottom Spacing for Navigation */}
           <View style={styles.bottomSpacing} />
@@ -653,6 +634,68 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 1,
   },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  topProfileButton: {
+    padding: 2,
+  },
+  topProfileAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topProfileInitial: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#006C48',
+  },
+  topNotificationButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  nivaranHeaderText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    letterSpacing: 1.5,
+  },
+  nivaranContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  nivaranTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  subtitleContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: 'center',
+    marginTop: 15,
+  },
+  nivaranSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#006C48',
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -667,7 +710,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#E5C47F',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
@@ -675,7 +718,7 @@ const styles = StyleSheet.create({
   profileInitial: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#481B5EE5',
+    color: '#006C48',
   },
   profileInfo: {
     flex: 1,
@@ -684,6 +727,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.8)',
     marginBottom: 2,
+    fontWeight: '500',
   },
   welcomeText: {
     fontSize: 18,
@@ -694,12 +738,13 @@ const styles = StyleSheet.create({
   locationSubtext: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.7)',
+    fontWeight: '400',
   },
   notificationButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -746,7 +791,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 10,
     right: 10,
-    backgroundColor: '#481B5EE5',
+    backgroundColor: '#006C48',
     width: 35,
     height: 35,
     borderRadius: 17.5,
@@ -822,7 +867,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 15,
     right: 15,
-    backgroundColor: '#481B5EE5',
+    backgroundColor: '#006C48',
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -887,7 +932,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   voteButton: {
-    backgroundColor: '#481B5EE5',
+    backgroundColor: '#006C48',
     paddingHorizontal: 15,
     paddingVertical: 6,
     borderRadius: 15,
@@ -920,7 +965,7 @@ const styles = StyleSheet.create({
   },
   viewMoreText: {
     fontSize: 16,
-    color: '#481B5EE5',
+    color: '#006C48',
     fontWeight: '600',
     marginRight: 8,
   },
@@ -1059,7 +1104,7 @@ const styles = StyleSheet.create({
   },
   storyCardCategory: {
     alignSelf: 'flex-start',
-    backgroundColor: '#481B5EE5',
+    backgroundColor: '#006C48',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -1081,7 +1126,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   storyVoteButton: {
-    backgroundColor: '#481B5EE5',
+    backgroundColor: '#006C48',
     paddingHorizontal: 30,
     paddingVertical: 12,
     borderRadius: 25,
@@ -1177,7 +1222,7 @@ const styles = StyleSheet.create({
   },
   categoryBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#481B5EE5',
+    backgroundColor: '#006C48',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 15,

@@ -1,0 +1,46 @@
+{
+  "preset": "jest-expo",
+  "setupFilesAfterEnv": [
+    "<rootDir>/src/__tests__/setup-simple.ts"
+  ],
+  "testMatch": [
+    "**/__tests__/**/*.test.(ts|tsx|js|jsx)",
+    "**/?(*.)+(spec|test).(ts|tsx|js|jsx)"
+  ],
+  "testPathIgnorePatterns": [
+    "/node_modules/",
+    "/e2e/"
+  ],
+  "collectCoverageFrom": [
+    "src/**/*.{ts,tsx}",
+    "!src/**/*.d.ts",
+    "!src/__tests__/**",
+    "!src/**/index.ts"
+  ],
+  "coverageReporters": [
+    "text",
+    "lcov",
+    "html"
+  ],
+  "coverageDirectory": "coverage",
+  "transform": {
+    "^.+\\.(js|jsx|ts|tsx)$": "babel-jest"
+  },
+  "transformIgnorePatterns": [
+    "node_modules/(?!(react-native|@react-native|react-native-vector-icons|expo|@expo|@react-navigation|react-navigation)/)"
+  ],
+  "moduleFileExtensions": [
+    "ts",
+    "tsx",
+    "js",
+    "jsx",
+    "json"
+  ],
+  "moduleNameMapper": {
+    "^@/(.*)$": "<rootDir>/src/$1",
+    "^@assets/(.*)$": "<rootDir>/assets/$1"
+  },
+  "clearMocks": true,
+  "resetMocks": true,
+  "restoreMocks": true
+}

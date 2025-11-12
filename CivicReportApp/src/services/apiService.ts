@@ -1,9 +1,22 @@
+import { AppError } from '../utils/errors';
+import { logger } from '../utils/logger';
+
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 
+export class ApiError extends AppError {
+  public status: number;
+  
+  constructor(message: string, status: number = 500, statusCode?: string) {
+    super(message, statusCode || 'API_ERROR');
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
 
 
 
-class ApiService {
+
+export class ApiService {
   static async upload(endpoint: string, formData: FormData, headers?: HeadersInit) {
   const url = `${API_BASE_URL}${endpoint}`;
 
@@ -41,17 +54,44 @@ class ApiService {
     };
 
     try {
+      logger.info('Making API request', {
+        method: options.method || 'GET',
+        url,
+        headers: config.headers,
+      });
+
       const response = await fetch(url, config);
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        const errorMessage = data.error || `HTTP error! status: ${response.status}`;
+        logger.error('API request failed', undefined, {
+          method: options.method || 'GET',
+          url,
+          status: response.status,
+          errorMessage,
+        });
+        throw new ApiError(errorMessage, response.status);
       }
+
+      logger.info('API request successful', {
+        method: options.method || 'GET',
+        url,
+        status: response.status,
+      });
 
       return data;
     } catch (error) {
-      console.error(`API request failed for ${endpoint}:`, error);
-      throw error;
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('API request error', error instanceof Error ? error : new Error(errorMessage), {
+        method: options.method || 'GET',
+        url,
+      });
+      throw new ApiError(errorMessage, 0, 'NETWORK_ERROR');
     }
   }
 

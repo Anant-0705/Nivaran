@@ -13,12 +13,20 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { IssueService } from '../services/issueService';
 import { LocationService } from '../services/locationService';
 import { AuthService } from '../services/authService';
 import { Issue } from '../types';
 
+type RootStackParamList = {
+  ProfileModal: undefined;
+  // Add other routes here if needed
+};
+
 const ReportIssueScreen = () => {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  
   // All state variables declared at the top
   const [reportGenerated, setReportGenerated] = useState(false);
   const [title, setTitle] = useState('');
@@ -47,6 +55,11 @@ const ReportIssueScreen = () => {
   const getCurrentUser = async () => {
     const user = await AuthService.getCurrentUser();
     setCurrentUser(user);
+  };
+
+  const navigateToProfile = () => {
+    console.log('🎯 Navigating to profile modal');
+    navigation.navigate('ProfileModal');
   };
 
   const getCurrentLocation = async () => {
@@ -137,13 +150,15 @@ const ReportIssueScreen = () => {
         type: 'image/jpeg',
       } as any);
 
+
       // Use your latest IPv4
-      const res = await fetch('http://10.236.118.99:3000/api/ai/verify', {
+      const res = await fetch('http://10.200.250.99:3000/api/ai/verify', {
+
         method: 'POST',
         headers: {
           Accept: 'application/json',
         },
-        body: formData,
+      body: formData,
       });
 
       if (!res.ok) throw new Error(`Verification failed: ${res.status}`);
@@ -169,6 +184,26 @@ const ReportIssueScreen = () => {
     }
   };
 
+  // Function to clean up markdown/HTML tags and format text properly
+  const cleanMarkdownText = (text: string): string => {
+    return text
+      // Remove HTML tags like <br>, <br/>, etc.
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]*>/g, '')
+      // Clean up markdown formatting
+      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold **text**
+      .replace(/\*(.*?)\*/g, '$1') // Remove italic *text*
+      .replace(/#{1,6}\s*/g, '') // Remove heading markers
+      // Clean up extra whitespace and newlines
+      .replace(/\n{3,}/g, '\n\n') // Replace multiple newlines with double newlines
+      .replace(/^\s+|\s+$/g, '') // Trim whitespace from start and end
+      .replace(/\s{2,}/g, ' ') // Replace multiple spaces with single space
+      // Fix common formatting issues
+      .replace(/\|\s*/g, '') // Remove table separators
+      .replace(/^\s*[-]{3,}\s*$/gm, '') // Remove horizontal rules
+      .trim();
+  };
+
   const generateReport = async () => {
     if (!title.trim() || !photo || !category) {
       Alert.alert('Error', 'Please provide all required fields (photo, title, category)');
@@ -177,7 +212,16 @@ const ReportIssueScreen = () => {
     setLoading(true);
     try {
       // Prepare prompt for Groq
-      const prompt = `Generate a civic issue report.\nTitle: ${title}\nCategory: ${category}\nImage: ${photo}\nDescription: Write a detailed description for this issue including what is visible in the image.`;
+      const prompt = `Generate a detailed civic issue report for: ${title}
+      Category: ${category}
+      
+      Please provide a clear, professional description of this ${category} issue. Focus on:
+      1. What the issue is and its severity
+      2. How it affects the community
+      3. Potential risks or consequences if not addressed
+      4. Any visible details from the image
+      
+      Write in a formal report style, use clear paragraphs, and avoid using markdown formatting or HTML tags. Keep the language professional and factual.`;
 
       // Use GROQ_API_KEY from env
       const groqApiKey = process.env.GROQ_API_KEY;
@@ -188,19 +232,26 @@ const ReportIssueScreen = () => {
           'Authorization': `Bearer ${groqApiKey}`,
         },
         body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
+          model: "meta-llama/llama-4-scout-17b-16e-instruct",
           messages: [
-            { role: 'system', content: 'You are an assistant that generates civic issue reports.' },
+            { 
+              role: 'system', 
+              content: 'You are a professional civic issue report writer. Write clear, factual descriptions without using markdown formatting, HTML tags, or special characters. Use plain text with proper paragraph breaks.' 
+            },
             { role: 'user', content: prompt },
           ],
           max_tokens: 512,
+          temperature: 0.7,
         }),
       });
 
       if (!response.ok) throw new Error('Groq API error: ' + response.status);
       const data = await response.json();
       const generatedDescription = data.choices?.[0]?.message?.content || '';
-      setDescription(generatedDescription);
+      
+      // Clean up the generated text
+      const cleanedDescription = cleanMarkdownText(generatedDescription);
+      setDescription(cleanedDescription);
       setReportGenerated(true);
     } catch (err) {
       console.error('Groq error:', err);
@@ -226,13 +277,13 @@ const ReportIssueScreen = () => {
       return;
     }
 
-    if (!location) {
-      Alert.alert('Error', 'Location is required to submit a report');
-      return;
-    }
-
     setLoading(true);
     try {
+      if (!location) {
+        Alert.alert('Error', 'Location is required to submit a report');
+        return;
+      }
+
       const issueData = {
         title: title.trim(),
         description: description.trim(),
@@ -245,7 +296,6 @@ const ReportIssueScreen = () => {
         images: photo ? [photo] : [],
         audio_url: undefined,
         user_id: currentUser.id,
-        verified: verificationStatus === 'success',
       };
 
       const { issue, error } = await IssueService.createIssue(issueData);
@@ -285,22 +335,83 @@ const ReportIssueScreen = () => {
 
   return (
     <ImageBackground
-      source={{ uri: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?ixlib=rb-4.0.3' }}
+      source={require('../../assets/bgimage.png')}
       style={styles.container}
       resizeMode="cover"
     >
-      <StatusBar barStyle="light-content" backgroundColor='#481B5EE5' />
-      <View style={styles.headerOverlay} />
+      <StatusBar barStyle="light-content" backgroundColor="#006C48" />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Header Section */}
         <View style={styles.headerContent}>
+          {/* Profile and Notification Row */}
           <View style={styles.headerTop}>
-            <Text style={styles.headerTitle}>Report your issue</Text>
-            <TouchableOpacity style={styles.infoButton}>
-              <Ionicons name="information-circle-outline" size={24} color="#E5C47F" />
+            <TouchableOpacity onPress={navigateToProfile} style={styles.profileButton}>
+              <View style={styles.profileAvatar}>
+                <Text style={styles.profileInitial}>
+                  {currentUser?.name?.charAt(0) || currentUser?.email?.charAt(0) || 'U'}
+                </Text>
+              </View>
+              <View style={styles.profileInfo}>
+                <Text style={styles.locationLabel}>Ghaziabad</Text>
+                <Text style={styles.welcomeText}>
+                  Welcome {currentUser?.name?.split(' ')[0] || 'User'}!
+                </Text>
+                <Text style={styles.locationSubtext}>Report civic issues easily</Text>
+              </View>
             </TouchableOpacity>
+            
+            <TouchableOpacity style={[styles.notificationButton, { backgroundColor: 'white' }]}>
+              <Ionicons name="notifications-outline" size={24} color="#000000" />
+            </TouchableOpacity>
+            </View>
+
+          {/* Logo at the top */}
+          <View style={styles.logoContainer}>
+            <View style={styles.logoBackground}>
+              <Image 
+                source={require('../../assets/logo.png')} 
+                style={styles.headerLogo}
+                resizeMode="contain"
+              />
+            </View>
           </View>
-          <Text style={styles.headerSubtitle}>Fast, simple, and effective reporting.</Text>
+
+          {/* 3 Steps Section */}
+          <View style={styles.stepsContainer}>
+            <View style={styles.stepsTitleContainer}>
+              <Text style={styles.stepsTitle}>REPORT YOUR ISSUE IN 3 STEPS</Text>
+            </View>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.stepsScrollContainer}
+            >
+              <View style={styles.stepCard}>
+                <View style={styles.stepIconContainer}>
+                  <Ionicons name="camera" size={32} color="#006C48" />
+                </View>
+                <Text style={styles.stepTitle}>Capture the Issue</Text>
+                <Text style={styles.stepDescription}>Click a photo of the problem that needs to be reported</Text>
+              </View>
+              
+              <View style={styles.stepCard}>
+                <View style={styles.stepIconContainer}>
+                  <Ionicons name="cloud-upload" size={32} color="#006C48" />
+                </View>
+                <Text style={styles.stepTitle}>Upload the details</Text>
+                <Text style={styles.stepDescription}>Upload your image and fill in the category</Text>
+              </View>
+
+              <View style={styles.stepCard}>
+                <View style={styles.stepIconContainer}>
+                  <Ionicons name="send" size={32} color="#006C48" />
+                </View>
+                <Text style={styles.stepTitle}>Submit</Text>
+                <Text style={styles.stepDescription}>Submit your report and track the progress</Text>
+              </View>
+            </ScrollView>
+          </View>
         </View>
 
         <View style={styles.contentBackground}>
@@ -344,7 +455,7 @@ const ReportIssueScreen = () => {
                   disabled={verificationStatus === 'pending'}
                 >
                   <Text style={styles.verifyImageButtonText}>
-                    {verificationStatus === 'pending' ? 'Verifying...' : 'Verify Image'}
+                    {verificationStatus === 'success' ? 'Image Verified': verificationStatus === 'fail' ? 'Not Verified':verificationStatus === 'pending'? 'Verifying...':'Upload Image'}
                   </Text>
                   {verificationStatus === 'success' && (
                     <Ionicons name="checkmark-circle" size={20} color="white" style={styles.verifyImageButtonIcon} />
@@ -365,20 +476,22 @@ const ReportIssueScreen = () => {
               placeholderTextColor="#999"
             />
           </View>
+          
           {/* Location Section */}
           <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Location<Text style={styles.required}>*</Text></Text>
-          <View style={styles.locationContainer}>
-            <Text style={styles.locationText}>
-              {address || 'Fetching your location'}
-            </Text>
-            {!address && (
-              <TouchableOpacity onPress={getCurrentLocation} style={styles.refreshButton}>
-                <Ionicons name="refresh" size={16} color="#666" />
-              </TouchableOpacity>
-            )}
+            <Text style={styles.sectionLabel}>Location<Text style={styles.required}>*</Text></Text>
+            <View style={styles.locationContainer}>
+              <Text style={styles.locationText}>
+                {address || 'Fetching your location'}
+              </Text>
+              {!address && (
+                <TouchableOpacity onPress={getCurrentLocation} style={styles.refreshButton}>
+                  <Ionicons name="refresh" size={16} color="#666" />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-        </View>
+          
           {/* Category Section */}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>
@@ -427,9 +540,15 @@ const ReportIssueScreen = () => {
           {/* Submit Button */}
           {reportGenerated ? (
             <View style={{ marginTop: 16, paddingBottom: 100 }}>
-              <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8, paddingHorizontal: 20 }}>Generated Report:</Text>
-              <View style={{ backgroundColor: '#f5f5f5', borderRadius: 8, padding: 12, marginBottom: 16, marginHorizontal: 20 }}>
-                <Text style={{ fontSize: 15 }}>{description}</Text>
+              <Text style={styles.reportLabel}>Generated Report:</Text>
+              <View style={styles.reportContainer}>
+                <ScrollView 
+                  style={styles.reportScrollView}
+                  showsVerticalScrollIndicator={true}
+                  nestedScrollEnabled={true}
+                >
+                  <Text style={styles.reportText}>{description}</Text>
+                </ScrollView>
               </View>
               <TouchableOpacity
                 style={[
@@ -465,19 +584,106 @@ const ReportIssueScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  reportLabel: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginBottom: 12,
+    paddingHorizontal: 20,
+    color: '#333',
+  },
+  reportContainer: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    marginBottom: 20,
+    marginHorizontal: 20,
+    minHeight: 200,        // Changed: Added minimum height
+    maxHeight: 400,        // Changed: Increased from 250 to 400
+    borderWidth: 1,
+    borderColor: '#e1e1e1',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  reportScrollView: {
+    flex: 1,
+    padding: 16,
+  },
+  reportText: {
+    fontSize: 15,
+    lineHeight: 22,       // Good line height for readability
+    color: '#333',
+    textAlign: 'justify',
+  },
+  
+  // Verify Image button styles
+  verifyImageButton: {
+    backgroundColor: '#006C48',
+    borderRadius: 12,
+    paddingVertical: 16,
+    marginHorizontal: 20,
+    marginTop: 16,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  verifyImageButtonSuccess: {
+    backgroundColor: '#006C48',
+  },
+  verifyImageButtonFail: {
+    backgroundColor: '#FF6B6B',
+  },
+  verifyImageButtonDisabled: {
+    backgroundColor: '#A8E6CF',
+  },
+  verifyImageButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  verifyImageButtonIcon: {
+    marginLeft: 8,
+  },
+  
+  // Photo section styles
   photoContainer: {
-    backgroundColor: '#F7F8FA',
+    backgroundColor: '#eefff0ff',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     overflow: 'hidden',
   },
-  photoContainerHovered: { backgroundColor: 'rgba(48, 1, 84, 0.8)', borderColor: 'rgba(48, 1, 84, 0.8)' },
-  photoPreview: { position: 'relative' },
-  photoImage: { width: '100%', height: 160, resizeMode: 'cover' },
-  removePhotoButton: { position: 'absolute', top: 12, right: 12, backgroundColor: 'white', borderRadius: 12 },
-  photoPlaceholder: { height: 160, justifyContent: 'center', alignItems: 'center' },
-  photoPlaceholderText: { marginTop: 12, fontSize: 16, color: '#999', fontWeight: '500' },
+  photoContainerHovered: { 
+    backgroundColor: 'rgba(48, 1, 84, 0.8)', 
+    borderColor: 'rgba(48, 1, 84, 0.8)' 
+  },
+  photoPreview: { 
+    position: 'relative' 
+  },
+  photoImage: { 
+    width: '100%', 
+    height: 160, 
+    resizeMode: 'cover' 
+  },
+  removePhotoButton: { 
+    position: 'absolute', 
+    top: 12, 
+    right: 12, 
+    backgroundColor: 'white', 
+    borderRadius: 12 
+  },
+  photoPlaceholder: { 
+    height: 160, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  photoPlaceholderText: { 
+    marginTop: 12, 
+    fontSize: 16, 
+    color: '#999', 
+    fontWeight: '500' 
+  },
   textInput: {
     backgroundColor: '#F7F8FA',
     borderRadius: 12,
@@ -488,58 +694,158 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
-  textArea: { height: 100, textAlignVertical: 'top' },
-  // Verify Image button styles
-  verifyImageButton: {
-    backgroundColor: '#6247EA',
-    borderRadius: 12,
-    paddingVertical: 16,
-    marginHorizontal: 20,
-    marginTop: 16,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
+  textArea: { 
+    height: 100, 
+    textAlignVertical: 'top' 
   },
-  verifyImageButtonSuccess: {
-    backgroundColor: '#2ECC71',
+  
+  container: { 
+    flex: 1 
   },
-  verifyImageButtonFail: {
-    backgroundColor: '#FF6B6B',
+  content: { 
+    flex: 1 
   },
-  verifyImageButtonDisabled: {
-    backgroundColor: '#B3A5F9',
-  },
-  verifyImageButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  verifyImageButtonIcon: {
-    marginLeft: 8,
-  },
-  container: { flex: 1 },
-  headerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#481B5EE5',
-  },
+  
+  // Header styles
   headerContent: {
     paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 20,
-    position: 'relative',
-    zIndex: 1,
   },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#E5C47F' },
-  headerSubtitle: { fontSize: 16, color: 'rgba(255, 255, 255, 0.8)' },
-  infoButton: { padding: 4 },
-  content: { flex: 1 },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  profileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  profileAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  profileInitial: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#006C48',
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  locationLabel: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 2,
+  },
+  welcomeText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  locationSubtext: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  notificationButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  logoBackground: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 60,
+    height: 60,
+    tintColor: '#006C48',
+  },
+  
+  // 3 Steps section
+  stepsContainer: {
+    marginBottom: 20,
+  },
+  stepsTitleContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: 'center',
+    marginBottom: 15,
+  },
+  stepsTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#006C48',
+    textAlign: 'center',
+    letterSpacing: 1,
+  },
+  stepsScrollContainer: {
+    paddingHorizontal: 10,
+  },
+  stepCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 8,
+    width: 140,
+    alignItems: 'center',
+  },
+  stepIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#F0F9FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  stepTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#006C48',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  stepDescription: {
+    fontSize: 10,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 14,
+  },
+  
   contentBackground: {
     backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     marginTop: 10,
     paddingTop: 20,
+    minHeight: 600,
+  },
+
+  headerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#481B5EE5',
   },
   section: {
     paddingHorizontal: 20,
@@ -582,7 +888,7 @@ const styles = StyleSheet.create({
   categoryButton: {
     flex: 1,
     minWidth: '47%',
-    backgroundColor: '#F7F8FA',
+    backgroundColor: '#eefff0ff',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -590,12 +896,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   categoryButtonSelected: {
-    backgroundColor: 'rgba(48, 1, 84, 0.8)',
-    borderColor: 'rgba(48, 1, 84, 0.8)',
+    backgroundColor: '#006C48',
+    borderColor: '#006C48',
   },
   categoryButtonHovered: {
-    backgroundColor:'rgba(48, 1, 84, 0.8)',
-    borderColor: 'rgba(48, 1, 84, 0.8)',
+    backgroundColor:'#006C48',
+    borderColor: '#006C48',
   },
   categoryLabel: {
     fontSize: 14,
@@ -616,18 +922,51 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
   },
   submitButton: {
-    backgroundColor: '#6247EA',
+    flex: 1,
+    backgroundColor: '#006C48',
     borderRadius: 12,
     paddingVertical: 16,
-    marginHorizontal: 20,
-    marginBottom: 40,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
   },
-  submitButtonDisabled: { backgroundColor: '#B3A5F9' },
-  submitButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },
-  submitButtonIcon: { marginLeft: 8 },
+  submitButtonDisabled: { 
+    backgroundColor: '#A8E6CF' 
+  },
+  submitButtonText: { 
+    color: 'white', 
+    fontSize: 16, 
+    fontWeight: '600' 
+  },
+  submitButtonIcon: { 
+    marginLeft: 8 
+  },
+
+  // Action buttons container
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  editButton: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#006C48',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  editButtonText: {
+    color: '#006C48',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  buttonIcon: {
+    marginRight: 8,
+  },
 });
 
 export default ReportIssueScreen;

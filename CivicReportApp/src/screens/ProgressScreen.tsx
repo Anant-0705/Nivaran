@@ -15,8 +15,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Issue } from '../types';
 import { IssueService } from '../services/issueService';
 import { AuthService } from '../services/authService';
+import { NavigationProp } from '@react-navigation/native';
 
-const ProgressScreen: React.FC = () => {
+interface ProgressScreenProps {
+  navigation: NavigationProp<any>;
+}
+
+const ProgressScreen: React.FC<ProgressScreenProps> = ({ navigation }) => {
   const [userIssues, setUserIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -122,11 +127,11 @@ const ProgressScreen: React.FC = () => {
 
   return (
     <ImageBackground
-      source={{ uri: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?ixlib=rb-4.0.3' }}
+      source={require('../../assets/bgimage.png')}
       style={styles.container}
       resizeMode="cover"
     >
-      <StatusBar barStyle="light-content" backgroundColor="#481B5EE5" translucent />
+      <StatusBar barStyle="light-content" backgroundColor="#006C48" translucent />
       <View style={styles.headerOverlay} />
       
       <ScrollView
@@ -138,15 +143,30 @@ const ProgressScreen: React.FC = () => {
       >
         {/* Header Content */}
         <View style={styles.headerContent}>
-          <View style={styles.headerTop}>
-            <Text style={styles.headerTitle}>Track Your Reports</Text>
-            <TouchableOpacity style={styles.infoButton}>
-              <Ionicons name="information-circle-outline" size={24} color="#E5C47F" />
+          {/* Profile and Notification Row - Top Row */}
+          <View style={styles.topRow}>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('ProfileModal')} 
+              style={styles.topProfileButton}
+            >
+              <View style={styles.topProfileAvatar}>
+                <Text style={styles.topProfileInitial}>
+                  {currentUser?.name?.charAt(0) || currentUser?.email?.charAt(0) || 'U'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+            
+            <Text style={styles.nivaranHeaderText}>NIVARAN</Text>
+            
+            <TouchableOpacity style={styles.topNotificationButton}>
+              <Ionicons name="notifications-outline" size={24} color="#000000" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.headerSubtitle}>
-            Follow updates from report to resolution.
-          </Text>
+
+          {/* Subtitle */}
+          <View style={styles.subtitleContainer}>
+            <Text style={styles.nivaranSubtitle}>TRACK YOUR PROGRESS</Text>
+          </View>
         </View>
 
         <View style={styles.contentBackground}>
@@ -277,7 +297,7 @@ const ProgressScreen: React.FC = () => {
   },
   headerOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#481B5EE5',
+   
   },
   scrollView: {
     flex: 1,
@@ -309,23 +329,67 @@ const ProgressScreen: React.FC = () => {
     position: 'relative',
     zIndex: 1,
   },
-  headerTop: {
+  topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 30,
   },
-  headerTitle: {
+  topProfileButton: {
+    padding: 2,
+  },
+  topProfileAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topProfileInitial: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#006C48',
+  },
+  topNotificationButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  nivaranHeaderText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    letterSpacing: 1.5,
+  },
+  nivaranContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  nivaranTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#E5C47F',
+    color: '#FFFFFF',
+    letterSpacing: 2,
+    marginBottom: 8,
   },
-  headerSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
+  subtitleContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: 'center',
+    marginTop: 15,
   },
-  infoButton: {
-    padding: 4,
+  nivaranSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#006C48',
+    letterSpacing: 1,
+    textAlign: 'center',
   },
   contentBackground: {
     backgroundColor: 'white',

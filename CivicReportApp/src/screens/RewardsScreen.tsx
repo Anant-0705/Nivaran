@@ -12,11 +12,13 @@ import {
   FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { AuthService } from '../services/authService';
 import { RewardService } from '../services/rewardService';
 import { User, Reward } from '../types';
 
 const RewardsScreen: React.FC = () => {
+  const navigation = useNavigation();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +51,11 @@ const RewardsScreen: React.FC = () => {
       console.error('Error loading rewards:', error);
       setRewards([]);
     }
+  };
+
+  const navigateToProfile = () => {
+    // @ts-ignore
+    navigation.navigate('ProfileModal');
   };
 
   const onRefresh = async () => {
@@ -113,12 +120,11 @@ const RewardsScreen: React.FC = () => {
 
   return (
     <ImageBackground
-      source={{ uri: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?ixlib=rb-4.0.3' }}
+      source={require('../../assets/bgimage.png')}
       style={styles.container}
       resizeMode="cover"
     >
-      <StatusBar barStyle="light-content" backgroundColor="#481B5EE5" translucent />
-      <View style={styles.headerOverlay} />
+      <StatusBar barStyle="light-content" backgroundColor="#006C48" />
       
       <ScrollView
         style={styles.scrollView}
@@ -129,15 +135,27 @@ const RewardsScreen: React.FC = () => {
       >
         {/* Header Content */}
         <View style={styles.headerContent}>
-          <View style={styles.headerTop}>
-            <Text style={styles.headerTitle}>Your Progress</Text>
-            <TouchableOpacity style={styles.infoButton}>
-              <Ionicons name="information-circle-outline" size={24} color="#E5C47F" />
+          {/* Profile and Notification Row - Top Row */}
+          <View style={styles.topRow}>
+            <TouchableOpacity onPress={navigateToProfile} style={styles.topProfileButton}>
+              <View style={styles.topProfileAvatar}>
+                <Text style={styles.topProfileInitial}>
+                  {currentUser?.name?.charAt(0) || currentUser?.email?.charAt(0) || 'U'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+            
+            <Text style={styles.nivaranHeaderText}>NIVARAN</Text>
+            
+            <TouchableOpacity style={styles.topNotificationButton}>
+              <Ionicons name="notifications-outline" size={24} color="#000000" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.headerSubtitle}>
-            Unlock rewards for making a difference.
-          </Text>
+
+          {/* Subtitle */}
+          <View style={styles.subtitleContainer}>
+            <Text style={styles.nivaranSubtitle}>YOUR PROGRESS</Text>
+          </View>
         </View>
 
         <View style={styles.contentBackground}>
@@ -269,7 +287,7 @@ const styles = StyleSheet.create({
   },
   headerOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#481B5EE5',
+    backgroundColor: '#006C48',
   },
   scrollView: {
     flex: 1,
@@ -305,6 +323,68 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 1,
   },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  topProfileButton: {
+    padding: 2,
+  },
+  topProfileAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topProfileInitial: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#006C48',
+  },
+  topNotificationButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  nivaranHeaderText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    letterSpacing: 1.5,
+  },
+  nivaranContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  nivaranTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  subtitleContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: 'center',
+    marginTop: 15,
+  },
+  nivaranSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#006C48',
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -331,7 +411,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   levelCard: {
-    backgroundColor: '#481B5EE5',
+    backgroundColor: '#006C48',
     marginHorizontal: 20,
     marginBottom: 20,
     borderRadius: 20,
@@ -386,7 +466,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   rewardsButton: {
-    backgroundColor: '#481B5EE5',
+    backgroundColor: '#006C48',
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 20,
