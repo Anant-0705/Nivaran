@@ -46,8 +46,9 @@ const authLimiter = rateLimit({
 const speedLimiter = slowDown({
   windowMs: 15 * 60 * 1000, // 15 minutes
   delayAfter: 50, // Allow 50 requests per windowMs without delay
-  delayMs: 100, // Add 100ms delay per request after delayAfter
+  delayMs: () => 100, // Add 100ms delay per request after delayAfter
   maxDelayMs: 2000, // Maximum delay of 2 seconds
+  validate: { delayMs: false }, // Disable the delayMs warning
 });
 
 // File upload rate limiter

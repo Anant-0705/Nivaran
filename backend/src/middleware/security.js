@@ -190,6 +190,87 @@ const sanitizeInput = (req, res, next) => {
   next();
 };
 
+// Prevent XSS attacks
+const preventXSS = (req, res, next) => {
+  const xssPatterns = [
+    /<script[\s\S]*?>[\s\S]*?<\/script>/gi,
+    /<iframe[\s\S]*?>[\s\S]*?<\/iframe>/gi,
+    /<object[\s\S]*?>[\s\S]*?<\/object>/gi,
+    /<embed[\s\S]*?>/gi,
+    /javascript:/gi,
+    /vbscript:/gi,
+    /onload=/gi,
+    /onerror=/gi,
+    /onclick=/gi,
+    /onmouseover=/gi,
+  ];
+
+  const checkForXSS = (obj) => {
+    if (typeof obj === 'string') {
+      for (const pattern of xssPatterns) {
+        if (pattern.test(obj)) {
+          return true;
+        }
+      }
+    } else if (typeof obj === 'object' && obj !== null) {
+      for (const key in obj) {
+        if (obj.hasOwnProperty(key) && checkForXSS(obj[key])) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  // Check request body, query, and params
+  if (checkForXSS(req.body) || checkForXSS(req.query) || checkForXSS(req.params)) {
+    return res.status(400).json({
+      error: 'Invalid input detected',
+      message: 'Request contains potentially malicious content'
+    });
+  }
+
+  next();
+};
+
+// Prevent SQL injection attacks
+const preventSQLInjection = (req, res, next) => {
+  const sqlPatterns = [
+    /(\b(select|insert|update|delete|drop|create|alter|exec|execute|union|script)\b)/gi,
+    /((\%27)|(\'))|(\-\-)|(\%23)|(#)/gi,
+    /((\%3D)|(=))[^\n]*((\%27)|(\')|((\%3B)|(;)))/gi,
+    /\w*((\%27)|(\'))((\%6F)|o|(\%4F))((\%72)|r|(\%52))/gi,
+    /((\%27)|(\'))union/gi,
+  ];
+
+  const checkForSQLInjection = (obj) => {
+    if (typeof obj === 'string') {
+      for (const pattern of sqlPatterns) {
+        if (pattern.test(obj)) {
+          return true;
+        }
+      }
+    } else if (typeof obj === 'object' && obj !== null) {
+      for (const key in obj) {
+        if (obj.hasOwnProperty(key) && checkForSQLInjection(obj[key])) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  // Check request body, query, and params
+  if (checkForSQLInjection(req.body) || checkForSQLInjection(req.query) || checkForSQLInjection(req.params)) {
+    return res.status(400).json({
+      error: 'Invalid input detected',
+      message: 'Request contains potentially malicious SQL patterns'
+    });
+  }
+
+  next();
+};
+
 module.exports = {
   securityHeaders,
   corsOptions,
@@ -199,4 +280,6 @@ module.exports = {
   customSecurityHeaders,
   requestTiming,
   sanitizeInput,
+  preventXSS,
+  preventSQLInjection,
 };

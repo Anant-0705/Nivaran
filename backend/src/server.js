@@ -15,7 +15,9 @@ const {
   devCorsOptions,
   customSecurityHeaders,
   requestTiming,
-  sanitizeInput 
+  sanitizeInput,
+  preventXSS,
+  preventSQLInjection
 } = require('./middleware/security');
 
 const { 
@@ -24,11 +26,6 @@ const {
   authLimiter, 
   speedLimiter 
 } = require('./middleware/rateLimiter');
-
-const { 
-  preventSQLInjection, 
-  preventXSS 
-} = require('./middleware/validation');
 
 // Import health routes
 const healthRoutes = require('./routes/health');
