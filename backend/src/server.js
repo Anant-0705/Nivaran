@@ -78,6 +78,14 @@ app.use(sanitizeInput);
 app.use(preventXSS);
 app.use(preventSQLInjection);
 
+// Add request logging middleware
+app.use((req, res, next) => {
+  console.log(`🟢 [SERVER] ${req.method} ${req.url}`);
+  console.log(`🟢 [SERVER] Headers:`, JSON.stringify(req.headers, null, 2));
+  console.log(`🟢 [SERVER] Body type:`, typeof req.body);
+  next();
+});
+
 // Health and monitoring routes (no additional rate limiting)
 app.use('/', healthRoutes);
 

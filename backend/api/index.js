@@ -18,6 +18,7 @@ const authRoutes = require('../src/routes/auth');
 const issueRoutes = require('../src/routes/issues');
 const rewardRoutes = require('../src/routes/rewards');
 const userRoutes = require('../src/routes/users');
+const aiRoutes = require('../src/routes/aiRoutes');
 
 const app = express();
 
@@ -70,58 +71,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/issues', issueRoutes);
 app.use('/api/rewards', rewardRoutes);
 app.use('/api/users', userRoutes);
-
-// AI Service Proxy (to external Railway/Render service)
-app.use('/api/ai', async (req, res) => {
-  try {
-    const aiServiceUrl = process.env.AI_SERVICE_URL;
-    const internalApiKey = process.env.INTERNAL_API_KEY;
-    
-    if (!aiServiceUrl) {
-      return res.status(500).json({ 
-        error: 'AI service not configured',
-        message: 'AI_SERVICE_URL environment variable is missing'
-      });
-    }
-
-    // Construct the full URL for the AI service
-    const fullUrl = `${aiServiceUrl}${req.path}`;
-    
-    console.log(`Proxying AI request to: ${fullUrl}`);
-
-    // Use dynamic import for node-fetch
-    const fetch = (await import('node-fetch')).default;
-    
-    const response = await fetch(fullUrl, {
-      method: req.method,
-      headers: {
-        'Content-Type': req.headers['content-type'] || 'application/json',
-        'Authorization': `Bearer ${internalApiKey}`,
-        'User-Agent': 'Nivaran-Backend/1.0'
-      },
-      body: req.method !== 'GET' && req.body ? JSON.stringify(req.body) : undefined,
-      timeout: 25000 // 25 second timeout for Vercel
-    });
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: 'AI service error',
-        message: data.message || 'AI service request failed',
-        details: data
-      });
-    }
-    
-    res.status(response.status).json(data);
-  } catch (error) {
-    console.error('AI service proxy error:', error);
-    res.status(500).json({ 
-      error: 'AI service unavailable',
-      message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
-  }
-});
+app.use('/api/ai', aiRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -21,6 +21,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
+        "http://localhost:1200",
+        "http://192.168.10.155:1200",
         "https://*.vercel.app",
         "https://localhost:3000"
     ],
@@ -29,7 +31,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MODEL_PATH = os.environ.get("MODEL_PATH", "yolov8n.pt")
+MODEL_PATH = os.environ.get("MODEL_PATH", "models/best.pt")
 CONF_THRESHOLD = float(os.environ.get("CONF_THRESHOLD", "0.6"))
 INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
 
@@ -49,14 +51,18 @@ async def verify_api_key(credentials: HTTPAuthorizationCredentials = Depends(sec
 
 # Load model with fallback to pre-trained
 try:
-    if MODEL_PATH == "yolov8n.pt" or not os.path.exists(MODEL_PATH):
-        LOGGER.info("Loading pre-trained YOLOv8n model (will download ~6MB on first run)...")
-        model = YOLO('yolov8n.pt')  # Auto-downloads pre-trained model
-        LOGGER.info("Pre-trained YOLOv8n model loaded successfully!")
-    else:
+    if os.path.exists(MODEL_PATH):
         LOGGER.info(f"Loading custom model from {MODEL_PATH}")
         model = YOLO(MODEL_PATH)
         LOGGER.info(f"Custom model loaded from {MODEL_PATH}")
+    elif os.path.exists("models/best.pt"):
+        LOGGER.info("Loading best.pt model from models directory...")
+        model = YOLO('models/best.pt')
+        LOGGER.info("best.pt model loaded successfully!")
+    else:
+        LOGGER.info("Loading pre-trained YOLOv8n model (will download ~6MB on first run)...")
+        model = YOLO('yolov8n.pt')  # Auto-downloads pre-trained model
+        LOGGER.info("Pre-trained YOLOv8n model loaded successfully!")
 except Exception as e:
     LOGGER.exception("Failed to load model")
     # Create a mock model for testing
@@ -126,20 +132,25 @@ async def live():
 @app.post("/verify")
 async def verify_image(file: UploadFile = File(...), authenticated: bool = Depends(verify_api_key)):
     """Accept image upload, run YOLO inference, return verification JSON."""
+    LOGGER.info(f"🟡 [AI-SERVICE] Verify endpoint hit")
+    LOGGER.info(f"🟡 [AI-SERVICE] File received: {file.filename if file else 'None'}")
+    LOGGER.info(f"🟡 [AI-SERVICE] Content type: {file.content_type if file else 'None'}")
+    
     if not file.content_type.startswith("image/"):
+        LOGGER.error(f"❌ [AI-SERVICE] Invalid content type: {file.content_type}")
         raise HTTPException(status_code=400, detail="File must be an image")
 
     try:
         content = await file.read()
         img = Image.open(io.BytesIO(content)).convert("RGB")
-        LOGGER.info(f"Processing image: {file.filename}, size: {img.size}")
+        LOGGER.info(f"🟡 [AI-SERVICE] Processing image: {file.filename}, size: {img.size}")
     except Exception as e:
-        LOGGER.error(f"Invalid image processing: {e}")
+        LOGGER.error(f"❌ [AI-SERVICE] Invalid image processing: {e}")
         raise HTTPException(status_code=400, detail="Invalid image")
 
     # Handle case where no model is available
     if model is None:
-        LOGGER.warning("No model available - returning mock response")
+        LOGGER.warning("⚠️ [AI-SERVICE] No model available - returning mock response")
         return JSONResponse({
             "verified": True,
             "label": "mock_pothole",
@@ -151,6 +162,7 @@ async def verify_image(file: UploadFile = File(...), authenticated: bool = Depen
         })
 
     try:
+        LOGGER.info("🔄 [AI-SERVICE] Running model inference...")
         # Run inference (returns a Results object)
         results = model(img)  # ultralytics supports PIL image input
         # Use first result (single image)
@@ -161,6 +173,8 @@ async def verify_image(file: UploadFile = File(...), authenticated: bool = Depen
         confs = boxes.conf.tolist() if boxes.conf is not None else []
         cls_idxs = boxes.cls.tolist() if boxes.cls is not None else []
         names = res.names  # dict idx->label
+
+        LOGGER.info(f"🔄 [AI-SERVICE] Model detected {len(confs)} objects")
 
         # If any detection passes threshold -> verified
         verified = False
@@ -188,9 +202,9 @@ async def verify_image(file: UploadFile = File(...), authenticated: bool = Depen
             "threshold_used": CONF_THRESHOLD
         }
         
-        LOGGER.info(f"Verification result: {result}")
+        LOGGER.info(f"✅ [AI-SERVICE] Verification result: {result}")
         return JSONResponse(result)
         
     except Exception as e:
-        LOGGER.error(f"Model inference error: {e}")
+        LOGGER.error(f"❌ [AI-SERVICE] Model inference error: {e}")
         raise HTTPException(status_code=500, detail="Model inference failed")
