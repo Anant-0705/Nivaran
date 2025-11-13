@@ -1,11 +1,12 @@
 {
   "name": "civicreportapp-backend",
   "version": "1.0.0",
-  "description": "Backend API for CivicReportApp",
-  "main": "src/server.js",
+  "description": "Nivaran Backend API for Vercel",
+  "main": "api/index.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "vercel-build": "echo 'Vercel build complete'",
     "build": "node src/server.js",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -36,6 +37,7 @@
     "helmet": "^7.2.0",
     "multer": "^2.0.2",
     "node-cron": "^3.0.3",
+    "node-fetch": "^3.3.2",
     "pg": "^8.11.3",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
@@ -49,8 +51,13 @@
     "civic",
     "reporting",
     "api",
-    "supabase"
+    "supabase",
+    "vercel",
+    "serverless"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "engines": {
+    "node": "18.x"
+  }
 }

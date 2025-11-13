@@ -150,9 +150,8 @@ const ReportIssueScreen = () => {
         type: 'image/jpeg',
       } as any);
 
-
-      // Use your latest IPv4
-      const res = await fetch('http://10.200.250.99:3000/api/ai/verify', {
+      // Call backend server using computer's IP address for mobile access
+      const res = await fetch('http://192.168.10.146:1200/api/ai/verify', {
 
         method: 'POST',
         headers: {

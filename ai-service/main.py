@@ -4,27 +4,48 @@ import os
 import logging
 from typing import Optional
 
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from PIL import Image
 from ultralytics import YOLO
 
 LOGGER = logging.getLogger("uvicorn.error")
 
-app = FastAPI(title="AI Verification Service")
+app = FastAPI(title="AI Verification Service", version="1.0.0")
+security = HTTPBearer(auto_error=False)
 
-# Allow Node backend origin (adjust in production)
+# Allow backend origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # change to your backend domain in prod
+    allow_origins=[
+        "http://localhost:3000",
+        "https://*.vercel.app",
+        "https://localhost:3000"
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
 MODEL_PATH = os.environ.get("MODEL_PATH", "models/best.pt")
-CONF_THRESHOLD = float(os.environ.get("CONF_THRESHOLD", "0.6"))  # default 0.6
+CONF_THRESHOLD = float(os.environ.get("CONF_THRESHOLD", "0.6"))
+INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
+
+# Authentication dependency
+async def verify_api_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    if not INTERNAL_API_KEY:
+        # If no API key is set, allow requests (for development)
+        return True
+    
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Missing authorization header")
+    
+    if credentials.credentials != INTERNAL_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    
+    return True
 
 # Load model once at startup
 try:
@@ -33,6 +54,14 @@ try:
 except Exception as e:
     LOGGER.exception("Failed to load model. Ensure MODEL_PATH is correct.")
     raise
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log incoming requests for debugging."""
+    LOGGER.info(f"Incoming request: {request.method} {request.url}")
+    response = await call_next(request)
+    LOGGER.info(f"Response status: {response.status_code}")
+    return response
 
 @app.get("/health")
 async def health():
@@ -87,7 +116,7 @@ async def live():
     }
 
 @app.post("/verify")
-async def verify_image(file: UploadFile = File(...)):
+async def verify_image(file: UploadFile = File(...), authenticated: bool = Depends(verify_api_key)):
     """Accept image upload, run YOLO inference, return verification JSON."""
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
@@ -95,40 +124,52 @@ async def verify_image(file: UploadFile = File(...)):
     try:
         content = await file.read()
         img = Image.open(io.BytesIO(content)).convert("RGB")
+        LOGGER.info(f"Processing image: {file.filename}, size: {img.size}")
     except Exception as e:
+        LOGGER.error(f"Invalid image processing: {e}")
         raise HTTPException(status_code=400, detail="Invalid image")
 
-    # Run inference (returns a Results object)
-    results = model(img)  # ultralytics supports PIL image input
-    # Use first result (single image)
-    res = results[0]
+    try:
+        # Run inference (returns a Results object)
+        results = model(img)  # ultralytics supports PIL image input
+        # Use first result (single image)
+        res = results[0]
 
-    # Extract detections
-    boxes = res.boxes  # Boxes object
-    confs = boxes.conf.tolist() if boxes.conf is not None else []
-    cls_idxs = boxes.cls.tolist() if boxes.cls is not None else []
-    names = res.names  # dict idx->label
+        # Extract detections
+        boxes = res.boxes  # Boxes object
+        confs = boxes.conf.tolist() if boxes.conf is not None else []
+        cls_idxs = boxes.cls.tolist() if boxes.cls is not None else []
+        names = res.names  # dict idx->label
 
-    # If any detection passes threshold -> verified
-    verified = False
-    top_label = None
-    top_conf = 0.0
-    bbox = None
+        # If any detection passes threshold -> verified
+        verified = False
+        top_label = None
+        top_conf = 0.0
+        bbox = None
 
-    for i, conf in enumerate(confs):
-        if conf >= CONF_THRESHOLD:
-            verified = True
-            top_conf = float(conf)
-            idx = int(cls_idxs[i])
-            top_label = names.get(idx, str(idx))
-            # boxes.xyxy gives Nx4 tensor (x1,y1,x2,y2) in pixels
-            xyxy = boxes.xyxy[i].tolist()
-            bbox = [float(v) for v in xyxy]
-            break  # stop at first confident detection
+        for i, conf in enumerate(confs):
+            if conf >= CONF_THRESHOLD:
+                verified = True
+                top_conf = float(conf)
+                idx = int(cls_idxs[i])
+                top_label = names.get(idx, str(idx))
+                # boxes.xyxy gives Nx4 tensor (x1,y1,x2,y2) in pixels
+                xyxy = boxes.xyxy[i].tolist()
+                bbox = [float(v) for v in xyxy]
+                break  # stop at first confident detection
 
-    return JSONResponse({
-        "verified": verified,
-        "label": top_label,
-        "confidence": round(top_conf, 4),
-        "bbox": bbox
-    })
+        result = {
+            "verified": verified,
+            "label": top_label,
+            "confidence": round(top_conf, 4),
+            "bbox": bbox,
+            "detections_count": len(confs),
+            "threshold_used": CONF_THRESHOLD
+        }
+        
+        LOGGER.info(f"Verification result: {result}")
+        return JSONResponse(result)
+        
+    except Exception as e:
+        LOGGER.error(f"Model inference error: {e}")
+        raise HTTPException(status_code=500, detail="Model inference failed")
