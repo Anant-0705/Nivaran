@@ -151,7 +151,7 @@ const ReportIssueScreen = () => {
       } as any);
 
       // Call backend server using computer's IP address for mobile access
-      const res = await fetch('http://192.168.10.146:1200/api/ai/verify', {
+      const res = await fetch('https://backend-r97d6bk5x-anantsinghal2134-gmailcoms-projects.vercel.app/api/ai/verify', {
 
         method: 'POST',
         headers: {

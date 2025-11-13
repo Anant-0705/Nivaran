@@ -1,0 +1,8 @@
+node_modules
+.expo
+.expo-shared
+.git
+package-lock.json
+yarn.lock
+*.log
+.env.local

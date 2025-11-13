@@ -148,17 +148,26 @@ export class AuthService {
       
       console.log('🔐 Starting Google OAuth signin...');
 
-      // Get the current app scheme
-      const scheme = Constants.appOwnership === 'expo' ? 'exp' : 'civicreportapp';
+      // Determine redirect URL based on environment
+      let redirectUrl: string;
       
-      // Create redirect URL
-      const redirectUrl = makeRedirectUri({
-        scheme,
-        path: 'auth/callback',
-        preferLocalhost: true,
-      });
+      if (typeof window !== 'undefined') {
+        // Web environment - use the current origin with auth/callback path
+        const currentOrigin = window.location.origin;
+        redirectUrl = `${currentOrigin}/auth/callback`;
+        console.log('🌐 Web environment detected, using redirect URL:', redirectUrl);
+      } else {
+        // Mobile environment - use app scheme
+        const scheme = Constants.appOwnership === 'expo' ? 'exp' : 'civicreportapp';
+        redirectUrl = makeRedirectUri({
+          scheme,
+          path: 'auth/callback',
+          preferLocalhost: true,
+        });
+        console.log('📱 Mobile environment detected, using redirect URL:', redirectUrl);
+      }
       
-      console.log('🔐 Redirect URI:', redirectUrl);
+      console.log('🔐 Final redirect URI:', redirectUrl);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -175,11 +184,16 @@ export class AuthService {
 
       if (error) throw error;
       
-      // Open the OAuth URL in browser
-      if (data?.url) {
-        console.log('🔐 Opening OAuth URL:', data.url);
+      // Handle web vs mobile OAuth flow
+      if (typeof window !== 'undefined' && data?.url) {
+        // Web environment - redirect directly
+        console.log('🌐 Web OAuth: Redirecting to:', data.url);
+        window.location.href = data.url;
+        return { user: null, error: null }; // Will be handled by callback
+      } else if (data?.url) {
+        // Mobile environment - use WebBrowser
+        console.log('📱 Mobile OAuth: Opening browser with URL:', data.url);
         
-        // Open URL in browser with enhanced options
         const result = await WebBrowser.openAuthSessionAsync(
           data.url,
           redirectUrl,

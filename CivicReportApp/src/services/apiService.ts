@@ -1,7 +1,7 @@
 import { AppError } from '../utils/errors';
 import { logger } from '../utils/logger';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://backend-r97d6bk5x-anantsinghal2134-gmailcoms-projects.vercel.app/api';
 
 export class ApiError extends AppError {
   public status: number;

@@ -4,10 +4,12 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet } from 'react-native';
+import WebRouteHandler from '../components/WebRouteHandler';
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import AuthCallbackScreen from '../screens/AuthCallbackScreen';
 import MapScreen from '../screens/MapScreen';
 import ReportIssueScreen from '../screens/ReportIssueScreen';
 import RewardsScreen from '../screens/RewardsScreen';
@@ -73,6 +75,7 @@ const AuthStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="Login" component={LoginScreen} />
     <Stack.Screen name="Register" component={RegisterScreen} />
+    <Stack.Screen name="AuthCallback" component={AuthCallbackScreen} />
   </Stack.Navigator>
 );
 
@@ -164,19 +167,21 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ isAuthenticated, hasComplet
   console.log('📱 AppNavigator rendering with isAuthenticated:', isAuthenticated);
   
   return (
-    <NavigationContainer>
-      {isAuthenticated ? (
-        <>
-          {console.log('📱 Rendering MainStack (authenticated)')}
-          <MainStack />
-        </>
-      ) : (
-        <>
-          {console.log('📱 Rendering AuthStack (not authenticated)')}
-          <AuthStack />
-        </>
-      )}
-    </NavigationContainer>
+    <WebRouteHandler>
+      <NavigationContainer>
+        {isAuthenticated ? (
+          <>
+            {console.log('📱 Rendering MainStack (authenticated)')}
+            <MainStack />
+          </>
+        ) : (
+          <>
+            {console.log('📱 Rendering AuthStack (not authenticated)')}
+            <AuthStack />
+          </>
+        )}
+      </NavigationContainer>
+    </WebRouteHandler>
   );
 };
 
